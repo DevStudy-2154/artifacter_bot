@@ -1,10 +1,10 @@
 from io import BytesIO
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance, ImageFile
-import codecs, json
 import os
 import itertools
 from collections import Counter
 import base64
+from lib import common
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True  # 画像をロード
 
@@ -14,10 +14,10 @@ def culculate_op(data:dict):
 
     # 聖遺物オプションの数値取得
     cwd = os.path.dirname(os.path.abspath(__file__))
-    with codecs.open(f'{cwd}/Assets/duplicate.json', 'r',encoding='utf-8') as f:
-        dup = json.load(f)
-    with codecs.open(f'{cwd}/Assets/subopM.json', 'r',encoding='utf-8') as f:
-        mapping = json.load(f)
+    path1 = f'{cwd}/Assets/duplicate.json'
+    path2 = f'{cwd}/Assets/subopM.json'
+    dup = common.read_json(path1)
+    mapping = common.read_json(path2)
 
     res = [None,None,None,None]
     keymap = list(map(str,data.keys()))
@@ -173,13 +173,6 @@ def culculate_op(data:dict):
     return
 
 
-# jsonファイルの読み込み
-def read_json(path):  # 引数：jsonファイルのパス
-    with codecs.open(path,encoding='utf-8') as f:
-        data = json.load(f)
-    return data
-
-
 # 画像生成
 def generation(data):  # 引数：キャラクター情報
     element = data.get('元素')
@@ -196,10 +189,10 @@ def generation(data):  # 引数：キャラクター情報
 
     # 武器
     Weapon : dict = data.get('Weapon')
-    WeaponName : str =Weapon.get('name')
-    WeaponLevel : int =Weapon.get('Level')
-    WeaponRank : int =Weapon.get('totu')
-    WeaponRarelity : int =Weapon.get('rarelity')
+    WeaponName : str = Weapon.get('name')
+    WeaponLevel : int = Weapon.get('Level')
+    WeaponRank : int = Weapon.get('totu')
+    WeaponRarelity : int = Weapon.get('rarelity')
     WeaponBaseATK: int = Weapon.get('BaseATK')
     WeaponSubOP : int = Weapon.get('Sub')
     WeaponSubOPKey : str = WeaponSubOP.get('name')
@@ -550,7 +543,7 @@ def generation(data):  # 引数：キャラクター情報
             D.rounded_rectangle((1818,263,1862,288),1,'black')
             D.text((1831,265),str(q),font=config_font(19))
 
-    premium = read_json(f'{cwd}/Assets/premium.json')
+    premium = common.read_json(f'{cwd}/Assets/premium.json')
     user_badge = premium.get(f'{data.get("uid")}')
     if user_badge:
         for i,b in enumerate(user_badge):
