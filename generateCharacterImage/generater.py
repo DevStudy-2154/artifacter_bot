@@ -325,7 +325,7 @@ def generation(data):  # 引数：キャラクター情報
         basev = CharacterBase[state]
         return f"+{format(plusv,',')}",f"{format(basev,',')}",D.textlength(f"+{format(plusv,',')}",font=config_font(12)),D.textlength(f"{format(basev,',')}",font=config_font(12))
 
-    disper = ['会心率','会心ダメージ','攻撃パーセンテージ','防御パーセンテージ','HPパーセンテージ','水元素ダメージ','物理ダメージ','風元素ダメージ','岩元素ダメージ','炎元素ダメージ','与える治癒効果','与える治療効果','雷元素ダメージ','氷元素ダメージ','草元素ダメージ','与える治癒効果','元素チャージ効率']
+    disper = ['会心率','会心ダメージ','攻撃パーセンテージ','防御パーセンテージ','HPパーセンテージ','水元素ダメージ','物理ダメージ','風元素ダメージ','岩元素ダメージ','炎元素ダメージ','与える治癒効果','与える治療効果','雷元素ダメージ','氷元素ダメージ','草元素ダメージ','与える治癒効果','元素チャージ効率',]
     StateOP = ('HP','攻撃力',"防御力","元素熟知","会心率","会心ダメージ","元素チャージ効率")
     for k,v in CharacterStatus.items():
         if k in ['氷元素ダメージ','水元素ダメージ','岩元素ダメージ','草元素ダメージ','風元素ダメージ','炎元素ダメージ','物理ダメージ','与える治癒効果','雷元素ダメージ'] and v == 0:
@@ -370,12 +370,13 @@ def generation(data):  # 引数：キャラクター情報
         "元素チャージ効率":"元チャ効率",
         "HPパーセンテージ":"HP%",
     }
+
     if WeaponSubOPKey != None:
         BaseAtk = Image.open(f'{cwd}/emotes/{WeaponSubOPKey}.png').resize((23,23))
         BaseAtkmask = BaseAtk.copy()
         Base.paste(BaseAtk,(1600,155),mask=BaseAtkmask)
 
-        D.text((1623,155),f'{optionmap.get(WeaponSubOPKey) or WeaponSubOPKey}  {str(WeaponSubOPValue)+"%" if WeaponSubOPKey in disper else format(WeaponSubOPValue,",")}',font=config_font(23))
+        D.text((1623,155),f'{optionmap.get(WeaponSubOPKey) or WeaponSubOPKey} {str(WeaponSubOPValue)+"%" if WeaponSubOPKey in disper else WeaponSubOPValue}',font=config_font(23))
 
     D.rounded_rectangle((1430,45,1470,70),radius=1,fill='black')
     D.text((1433,46),f'R{WeaponRank}',font=config_font(24))
