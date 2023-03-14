@@ -1,25 +1,103 @@
+import os, random, string, itertools
 from io import BytesIO
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance, ImageFile
-import os
-import random, string
-import itertools
 from collections import Counter
-import base64
 from lib import common
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True  # 画像をロード
 
 
+# 聖遺物オプションの数値取得
+cwd = os.path.dirname(os.path.abspath(__file__))
+dup = common.read_json(f'{cwd}/Assets/duplicate.json')
+mapping = common.read_json(f'{cwd}/Assets/subopM.json')
+
+
+optionmap = {
+    "攻撃パーセンテージ": "攻撃%",
+    "防御パーセンテージ": "防御%",
+    "元素チャージ効率": "元チャ効率",
+    "HPパーセンテージ": "HP%",
+}
+
+disper = [
+    '会心率',
+    '会心ダメージ',
+    '攻撃パーセンテージ',
+    '防御パーセンテージ',
+    'HPパーセンテージ',
+    '水元素ダメージ',
+    '物理ダメージ',
+    '風元素ダメージ',
+    '岩元素ダメージ',
+    '炎元素ダメージ',
+    '与える治癒効果',
+    '与える治療効果',
+    '雷元素ダメージ',
+    '氷元素ダメージ',
+    '草元素ダメージ',
+    '与える治癒効果',
+    '元素チャージ効率'
+]
+
+StateOP = (
+    'HP',
+    '攻撃力',
+    "防御力",
+    "元素熟知",
+    "会心率",
+    "会心ダメージ",
+    "元素チャージ効率"
+)
+
+damages = [
+    '氷元素ダメージ',
+    '水元素ダメージ',
+    '岩元素ダメージ',
+    '草元素ダメージ',
+    '風元素ダメージ',
+    '炎元素ダメージ',
+    '物理ダメージ',
+    '与える治癒効果',
+    '雷元素ダメージ'
+]
+
+PointRefer = {
+    "total": {
+        "SS": 220,
+        "S": 200,
+        "A": 180
+    },
+    "flower": {
+        "SS": 50,
+        "S": 45,
+        "A": 40
+    },
+    "wing": {
+        "SS": 50,
+        "S": 45,
+        "A": 40
+    },
+    "clock": {
+        "SS": 45,
+        "S": 40,
+        "A": 35
+    },
+    "cup": {
+        "SS": 45,
+        "S": 40,
+        "A": 37
+    },
+    "crown": {
+        "SS": 40,
+        "S": 35,
+        "A": 30
+    }
+}
+
+
 # 聖遺物オプションの計算
 def culculate_op(data:dict):
-
-    # 聖遺物オプションの数値取得
-    cwd = os.path.dirname(os.path.abspath(__file__))
-    path1 = f'{cwd}/Assets/duplicate.json'
-    path2 = f'{cwd}/Assets/subopM.json'
-    dup = common.read_json(path1)
-    mapping = common.read_json(path2)
-
     res = [None,None,None,None]
     keymap = list(map(str,data.keys()))
 
@@ -202,17 +280,11 @@ def generation(data):  # 引数：キャラクター情報
     # 聖遺物スコア
     ScoreData : dict = data.get('Score')
     ScoreCVBasis : str = ScoreData.get('State')
-    # ScoreFlower : float = ScoreData.get('flower')
-    # ScoreWing : float = ScoreData.get('wing')
-    # ScoreClock : float = ScoreData.get('clock')
-    # ScoreCup : float = ScoreData.get('cup')
-    # ScoreCrown : float = ScoreData.get('crown')
     ScoreTotal : float = ScoreData.get('total')
 
     # 各聖遺物詳細
     ArtifactsData : dict = data.get('Artifacts')
 
-    cwd = os.path.abspath(os.path.dirname(__file__))
     config_font = lambda size : ImageFont.truetype(f'{cwd}/Assets/ja-jp.ttf',size)
     Base = Image.open(f'{cwd}/Base/{element}.png')
 
@@ -326,10 +398,8 @@ def generation(data):  # 引数：キャラクター情報
         basev = CharacterBase[state]
         return f"+{format(plusv,',')}",f"{format(basev,',')}",D.textlength(f"+{format(plusv,',')}",font=config_font(12)),D.textlength(f"{format(basev,',')}",font=config_font(12))
 
-    disper = ['会心率','会心ダメージ','攻撃パーセンテージ','防御パーセンテージ','HPパーセンテージ','水元素ダメージ','物理ダメージ','風元素ダメージ','岩元素ダメージ','炎元素ダメージ','与える治癒効果','与える治療効果','雷元素ダメージ','氷元素ダメージ','草元素ダメージ','与える治癒効果','元素チャージ効率',]
-    StateOP = ('HP','攻撃力',"防御力","元素熟知","会心率","会心ダメージ","元素チャージ効率")
     for k,v in CharacterStatus.items():
-        if k in ['氷元素ダメージ','水元素ダメージ','岩元素ダメージ','草元素ダメージ','風元素ダメージ','炎元素ダメージ','物理ダメージ','与える治癒効果','雷元素ダメージ'] and v == 0:
+        if k in damages and v == 0:
             k = f'{element}元素ダメージ'
         try:
             i = StateOP.index(k)
@@ -364,13 +434,6 @@ def generation(data):  # 引数：キャラクター情報
     BaseAtkmask = BaseAtk.copy()
     Base.paste(BaseAtk,(1600,120),mask=BaseAtkmask)
     D.text((1623,120),f'基礎攻撃力  {WeaponBaseATK}',font=config_font(23))
-
-    optionmap = {
-        "攻撃パーセンテージ":"攻撃%",
-        "防御パーセンテージ":"防御%",
-        "元素チャージ効率":"元チャ効率",
-        "HPパーセンテージ":"HP%",
-    }
 
     if WeaponSubOPKey != None:
         BaseAtk = Image.open(f'{cwd}/emotes/{WeaponSubOPKey}.png').resize((23,23))
@@ -487,39 +550,6 @@ def generation(data):  # 引数：キャラクター情報
         D.text((380+i*373-ATFScorelen,1016),str(Score),font=config_font(36))
         D.text((295+i*373-ATFScorelen,1025),'Score',font=config_font(27),fill=(160,160,160))
 
-        PointRefer = {
-            "total": {
-                "SS": 220,
-                "S": 200,
-                "A": 180
-            },
-            "flower": {
-                "SS": 50,
-                "S": 45,
-                "A": 40
-            },
-            "wing": {
-                "SS": 50,
-                "S": 45,
-                "A": 40
-            },
-            "clock": {
-                "SS": 45,
-                "S": 40,
-                "A": 35
-            },
-            "cup": {
-                "SS": 45,
-                "S": 40,
-                "A": 37
-            },
-            "crown": {
-                "SS": 40,
-                "S": 35,
-                "A": 30
-            }
-        }
-
         if Score >= PointRefer[parts]['SS']:
             ScoreImage =Image.open(f'{cwd}/artifactGrades/SS.png')
         elif Score >= PointRefer[parts]['S']:
@@ -555,31 +585,10 @@ def generation(data):  # 引数：キャラクター情報
             Base.paste(badge,(1843-i*45,533),mask=badge_mask)
 
     # 画像表示
-    # Base.show()
     imageName = f'{randomname(10)}.png'
     Base.save(f'{cwd}/image/{imageName}')
 
     return imageName
-    # return pil_to_base64(Base,format='png')
-    # return pil_to_discord(Base)
-
-
-# PILをbase64形式に変換
-def pil_to_base64(img, format="jpeg"):
-    buffer = BytesIO()
-    img.save(buffer, format)
-    img_str = base64.b64encode(buffer.getvalue()).decode("ascii")
-
-    return img_str
-
-
-# PILをdiscord送信用に変換
-def pil_to_discord(img):
-    fileio = BytesIO()
-    img.save(fileio, format="png")
-    fileio.seek(0)
-
-    return fileio
 
 
 # 画像ファイル名用のランダム文字列生成

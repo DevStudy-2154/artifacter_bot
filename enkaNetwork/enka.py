@@ -1,10 +1,15 @@
-import requests
-import json
+import requests, json
 import os
 from lib import common
 
 
-damage = {
+cwd = os.path.dirname(os.path.abspath(__file__))
+jp_data = common.read_json(f'{cwd}/jp.json')
+characters_data = common.read_json(f'{cwd}/characters.json')
+
+
+# 元素名からダメージ名とAPI IDへの対応付け
+element_to_damage = {
     "炎": {"name": "炎元素ダメージ", "prop": "40"},
     "雷": {"name": "雷元素ダメージ", "prop": "41"},
     "水": {"name": "水元素ダメージ", "prop": "42"},
@@ -16,184 +21,185 @@ damage = {
 
 
 # enka networkからキャラ情報取得
-def getApi(uid):
+def get_api(uid):
     response = requests.get(f"https://enka.network/u/{uid}/__data.json")
     data = response.json()
 
     return data
 
 
+# キャラ名（日本語）の取得
+def get_jp_name(id, data):
+    avatarId = get_avatarId(id, data)
+    hash = str(characters_data[avatarId]['NameTextMapHash'])
+    name = jp_data[hash]
+
+    return name
+
+
+# キャラクター情報上のアバターIDの取得
+def get_avatarId(id, data):
+    json_avatarId = data[int(id)]['avatarId']
+    avatarId = str(data[json_avatarId])
+
+    return avatarId
+
+
 # キャラ名を日本語に置き換え
-def translatedName(data):
-    cwd = os.path.dirname(os.path.abspath(__file__))
-    jpData = common.read_json(f'{cwd}/loc.json')['ja']
-    charactersData = common.read_json(f'{cwd}/characters.json')
+def tlanslated_to_jp(data):
+    api_data = data['nodes'][1]['data']
+    avatar_infolist = api_data[0]['avatarInfoList']
 
-    apiData = data['nodes'][1]['data']
-    avatarInfoList = apiData[0]['avatarInfoList'] # 29 = [30, 227, 378, 505, 624, 741],
+    # キャラクター名とAPIデータ上のIDを格納
+    my_characters = []
+    for character in api_data[avatar_infolist]:
+        name = get_jp_name(character, api_data)
+        my_characters.append({ 'id': character, 'name': name })
 
-    # キャラクター名とIDを格納
-    characters = []
-    for character in apiData[avatarInfoList]:
-        jsonAvatarId = apiData[character]['avatarId']
-        avatarId = str(apiData[jsonAvatarId])
-        nameTextMapHash = str(charactersData[avatarId]['NameTextMapHash'])
-        characterName = jpData[nameTextMapHash]
-        characters.append({ 'id': character, 'name': characterName })
-
-    return characters
+    return my_characters
 
 
 # キャラ情報作成
-def createCharacterData(data, id):
-    cwd = os.path.dirname(os.path.abspath(__file__))
-    jpData = common.read_json(f'{cwd}/loc.json')['ja']
-    charactersData = common.read_json(f'{cwd}/characters.json')
-    reliquaryData = common.read_json(f'{cwd}/reliquary.json')
+def create_character_data(data, id):
+    api_data = data['nodes'][1]['data']
+    character_info = api_data[int(id)]  # 該当キャラクターの情報が格納
+    avatarId = get_avatarId(id, api_data)
 
-    apiData = data['nodes'][1]['data']
-    characterInfo = apiData[int(id)]
-
-    jsonAvatarId = characterInfo['avatarId']
-    avatarId = str(apiData[jsonAvatarId])
-    nameTextMapHash = str(charactersData[avatarId]['NameTextMapHash'])
-    characterName = jpData[nameTextMapHash]
-
-    # レベル, 好感度, 凸
-    levelId = apiData[characterInfo['propMap']]['4001']
-    loveId = apiData[characterInfo['fetterInfo']]['expLevel']
-    const = len(apiData[characterInfo['talentIdList']]) if 'talentIdList' in characterInfo else 0
-
-    # 元素
-    jsonAvatarId = characterInfo['avatarId']
-    avatarId = str(apiData[jsonAvatarId])
-    element = reliquaryData[charactersData[avatarId]['Element']]
+    # レベル, 好感度, 凸, 元素
+    levelId = api_data[character_info['propMap']]['4001']
+    level = int(api_data[api_data[levelId]['val']])
+    love = api_data[api_data[character_info['fetterInfo']]['expLevel']]
+    totu = len(api_data[character_info['talentIdList']]) if 'talentIdList' in character_info else 0
+    element = jp_data[characters_data[avatarId]['Element']]
 
     # キャラクターステータス
-    status = apiData[characterInfo['fightPropMap']]
-    totalHPId = status['2000']
-    totalAttackId = status['2001']
-    totalDefenseId = status['2002']
-    familiarityId = status['28']
-    criticalRateId = status['20']
-    criticalDamageId = status['22']
-    chargeId = status['23']
-    skill = apiData[characterInfo['skillLevelMap']]
-    baseHPId = status['1']
-    baseAttackId = status['4']
-    baseDefenseId = status['7']
-    elementDamageId = status[damage[element]["prop"]]
+    status = api_data[character_info['fightPropMap']]  # 該当キャラクターのステータスが格納
+    total_HP = round(api_data[status['2000']])
+    total_attack = round(api_data[status['2001']])
+    total_defense = round(api_data[status['2002']])
+    jukuchi = round(api_data[status['28']])
+    critical_rate = round(api_data[status['20']]*100, 1)
+    critical_damage = round(api_data[status['22']]*100, 1)
+    element_charge = round(api_data[status['23']]*100, 1)
+    element_damage = round(api_data[status[element_to_damage[element]["prop"]]]*100, 1)
 
-    equipList = apiData[characterInfo['equipList']]
+    skill = api_data[character_info['skillLevelMap']]
+
+    base_HP = round(api_data[status['1']])
+    base_attack = round(api_data[status['4']])
+    base_defense = round(api_data[status['7']])
+
+    equiplist = api_data[character_info['equipList']]  #
 
     # 武器
-    weaponProp = apiData[apiData[equipList[-1]]['weapon']]
-    weaponDetail = apiData[apiData[equipList[-1]]['flat']]
-    weaponName = apiData[weaponDetail['nameTextMapHash']]
-    weaponTotu = list(apiData[weaponProp['affixMap']].values())[0]
-    weaponReality = apiData[weaponDetail['rankLevel']]
-    weaponBaseAtk = apiData[apiData[apiData[weaponDetail['weaponStats']][0]]['statValue']]
-    weaponSubStatus = jpData[apiData[apiData[apiData[weaponDetail['weaponStats']][1]]['appendPropId']]]
-    weaponSubStatusValue = apiData[apiData[apiData[weaponDetail['weaponStats']][1]]['statValue']]
+    weapon_prop = api_data[api_data[equiplist[-1]]['weapon']]
+    weapon_detail = api_data[api_data[equiplist[-1]]['flat']]
+    weapon_name = api_data[weapon_detail['nameTextMapHash']]
+    weapon_level = api_data[weapon_prop['level']]
+    weapon_totu = api_data[list(api_data[weapon_prop['affixMap']].values())[0]]+1
+    weapon_reality = api_data[weapon_detail['rankLevel']]
+    weapon_base_atk = api_data[api_data[api_data[weapon_detail['weaponStats']][0]]['statValue']]
+    weapon_sub_status = jp_data[api_data[api_data[api_data[weapon_detail['weaponStats']][1]]['appendPropId']]]
+    weapon_sub_status_value = api_data[api_data[api_data[weapon_detail['weaponStats']][1]]['statValue']]
 
     # 聖遺物
-    reliquaries = {}
-    reliquariesScore = {}
-    totalScore = 0
-    for index in range(len(equipList)):
+    reliquaries = {}  # 各聖遺物情報
+    reliquaries_score = {}  # 各聖遺物のスコア
+    total_score = 0
+    for index in range(len(equiplist)):
 
-        # 武器情報になったらストップ
-        if index == len(equipList)-1:
+        # 武器情報になったら処理を止める
+        if index == len(equiplist)-1:
             break
 
-        reliquaryProp = apiData[apiData[equipList[index]]['flat']]
-        reliquaryName = apiData[reliquaryProp['setNameTextMapHash']]
-        reliquaryLevel = apiData[apiData[apiData[equipList[index]]['reliquary']]['level']] - 1
-        reliquaryRank = apiData[reliquaryProp['rankLevel']]
-        reliquaryType = reliquaryData[apiData[reliquaryProp['equipType']]]
+        reliquary_prop = api_data[api_data[equiplist[index]]['flat']]
+        reliquary_name = api_data[reliquary_prop['setNameTextMapHash']]
+        reliquary_level = api_data[api_data[api_data[equiplist[index]]['reliquary']]['level']] - 1
+        reliquary_rank = api_data[reliquary_prop['rankLevel']]
+        reliquary_type = jp_data[api_data[reliquary_prop['equipType']]]
 
         # メインステータス
-        reliquaryMainStatus = apiData[apiData[reliquaryProp['reliquaryMainstat']]['mainPropId']]
-        reliquaryMainStatusValue = apiData[apiData[reliquaryProp['reliquaryMainstat']]['statValue']]
+        reliquary_main_status = api_data[api_data[reliquary_prop['reliquaryMainstat']]['mainPropId']]
+        reliquary_main_status_value = api_data[api_data[reliquary_prop['reliquaryMainstat']]['statValue']]
 
         # サブステータス
-        subStatuses = []
-        reliquarySubStatusList = apiData[reliquaryProp['reliquarySubstats']]
+        sub_statuses = []
+        reliquary_sub_statuslist = api_data[reliquary_prop['reliquarySubstats']]
         score = 0
 
-        for subStatus in reliquarySubStatusList:
-            subStatusName = reliquaryData[apiData[apiData[subStatus]['appendPropId']]]
-            subStatusValue = apiData[apiData[subStatus]['statValue']]
-            status = {"option": subStatusName, "value": subStatusValue}
-            subStatuses.append(status)
+        for sub_status in reliquary_sub_statuslist:
+            sub_status_name = jp_data[api_data[api_data[sub_status]['appendPropId']]]
+            sub_status_value = api_data[api_data[sub_status]['statValue']]
+            status = {"option": sub_status_name, "value": sub_status_value}
+            sub_statuses.append(status)
 
             # スコア計算
-            if subStatusName == "会心率":
-                score += subStatusValue * 2
-            elif subStatusName == "会心ダメージ" or subStatusName == "攻撃パーセンテージ":
-                score += subStatusValue
+            if sub_status_name == "会心率":
+                score += sub_status_value * 2
+            elif sub_status_name == "会心ダメージ" or sub_status_name == "攻撃パーセンテージ":
+                score += sub_status_value
 
         score = round(score, 1)
-        totalScore += score
-        reliquariesScore[reliquaryType] = score
+        total_score += score
+        reliquaries_score[reliquary_type] = score
 
-        reliquaries[reliquaryType] = {
-            "type": jpData[reliquaryName],
-            "Level": reliquaryLevel,
-            "rarelity": reliquaryRank,
+        reliquaries[reliquary_type] = {
+            "type": jp_data[reliquary_name],
+            "Level": reliquary_level,
+            "rarelity": reliquary_rank,
             "main": {
-                "option": reliquaryData[reliquaryMainStatus],
-                "value": reliquaryMainStatusValue
+                "option": jp_data[reliquary_main_status],
+                "value": reliquary_main_status_value
             },
-            "sub": subStatuses
+            "sub": sub_statuses
         }
 
     jsonData = {
         "Character": {
-            "Name": characterName,
-            "Const": const,
-            "Level": int(apiData[apiData[levelId]['val']]),
-            "Love": apiData[loveId],
+            "Name": get_jp_name(id, api_data),
+            "Const": totu,
+            "Level": level,
+            "Love": love,
             "Status": {
-                "HP": round(apiData[totalHPId]),
-                "攻撃力": round(apiData[totalAttackId]),
-                "防御力": round(apiData[totalDefenseId]),
-                "元素熟知": round(apiData[familiarityId]),
-                "会心率": round(apiData[criticalRateId]*100, 1),
-                "会心ダメージ": round(apiData[criticalDamageId]*100, 1),
-                "元素チャージ効率": round(apiData[chargeId]*100, 1),
-                damage[element]["name"]: round(apiData[elementDamageId]*100, 1),
+                "HP": total_HP,
+                "攻撃力": total_attack,
+                "防御力": total_defense,
+                "元素熟知": jukuchi,
+                "会心率": critical_rate,
+                "会心ダメージ": critical_damage,
+                "元素チャージ効率": element_charge,
+                element_to_damage[element]["name"]: element_damage,
             },
             "Talent": {
-                "通常": apiData[list(skill.values())[0]],
-                "スキル": apiData[list(skill.values())[1]],
-                "爆発": apiData[list(skill.values())[2]],
+                "通常": api_data[list(skill.values())[0]],
+                "スキル": api_data[list(skill.values())[1]],
+                "爆発": api_data[list(skill.values())[2]],
             },
             "Base":{
-                "HP": round(apiData[baseHPId]),
-                "攻撃力": round(apiData[baseAttackId]),
-                "防御力": round(apiData[baseDefenseId]),
+                "HP": base_HP,
+                "攻撃力": base_attack,
+                "防御力": base_defense,
             }
         },
         "Weapon": {
-            "name": jpData[weaponName],
-            "Level": apiData[weaponProp['level']],
-            "totu": apiData[weaponTotu]+1,
-            "rarelity": weaponReality,
-            "BaseATK": weaponBaseAtk,
+            "name": jp_data[weapon_name],
+            "Level": weapon_level,
+            "totu": weapon_totu,
+            "rarelity": weapon_reality,
+            "BaseATK": weapon_base_atk,
             "Sub": {
-                "name": weaponSubStatus,
-                "value": str(weaponSubStatusValue)
+                "name": weapon_sub_status,
+                "value": str(weapon_sub_status_value)
             }
         },
         "Score": {
             "State": "HP",
-            "total": round(totalScore, 1),
-            "flower": reliquariesScore['flower'],
-            "wing": reliquariesScore['wing'],
-            "clock": reliquariesScore['clock'],
-            "cup": reliquariesScore['cup'],
-            "crown": reliquariesScore['crown'],
+            "total": round(total_score, 1),
+            "flower": reliquaries_score['flower'],
+            "wing": reliquaries_score['wing'],
+            "clock": reliquaries_score['clock'],
+            "cup": reliquaries_score['cup'],
+            "crown": reliquaries_score['crown'],
         },
         "Artifacts": reliquaries,
         "元素": element
@@ -203,14 +209,16 @@ def createCharacterData(data, id):
 
 
 # キャラ名を整形して返す
-def getName(uid):
-    data = getApi(uid)
-    characters = translatedName(data)
+def get_my_characters(uid):
+    data = get_api(uid)
+    characters = tlanslated_to_jp(data)
 
     return characters
 
 
 # キャラクターデータをjson形式にして返す
-def getCharacterData(id, uid):
-    data = getApi(uid)
-    return createCharacterData(data, id)
+def get_character_data(id, uid):
+    data = get_api(uid)
+    json_data = create_character_data(data, id)
+
+    return json_data

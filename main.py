@@ -1,10 +1,12 @@
 import config
 import os
-import discord, asyncio
+import discord
 from discord.ui import Select, View
 from generateCharacterImage import generater
-from lib import common
 from enkaNetwork import enka
+
+
+cwd = os.path.dirname(os.path.abspath(__file__))
 
 
 # 必要インスタンス生成
@@ -31,15 +33,14 @@ class CharactersListSelect(Select):
 
         super().__init__(placeholder="表示させたいキャラを選んでください", min_values=1, max_values=1, options=options)
 
+    # 選択後の処理
     async def callback(self, interaction: discord.Interaction):
         # self.disabled = True
-        data = enka.getCharacterData(self.values[0], self.uid)
+        data = enka.get_character_data(self.values[0], self.uid)
         image = generater.generation(data)
-        await interaction.response.defer(ephemeral = True)
-
-
-        cwd = os.path.dirname(os.path.abspath(__file__))
         path = f'{cwd}/generateCharacterImage/image/{image}'
+
+        await interaction.response.defer(ephemeral = True)
         await interaction.followup.send(file=discord.File(path))
 
         # 画像削除
@@ -47,9 +48,10 @@ class CharactersListSelect(Select):
 
 
 # スラッシュコマンド作成
+# キャラクター画像生成コマンド
 @tree.command(name="build", description="キャラ画像生成")
 async def build_command(interaction: discord.Interaction, uid:int):
-    characters = enka.getName(uid)
+    characters = enka.get_my_characters(uid)
     await interaction.response.send_message("表示させたいキャラを選んでください", view=CharactersListView(characters, uid), ephemeral=True)
 
 
