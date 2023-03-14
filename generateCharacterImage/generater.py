@@ -1,6 +1,7 @@
 from io import BytesIO
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance, ImageFile
 import os
+import random, string
 import itertools
 from collections import Counter
 import base64
@@ -554,16 +555,34 @@ def generation(data):  # 引数：キャラクター情報
             Base.paste(badge,(1843-i*45,533),mask=badge_mask)
 
     # 画像表示
-    Base.show()
-    # Base.save(f'{cwd}/Tests/Image.png')
+    # Base.show()
+    imageName = f'{randomname(10)}.png'
+    Base.save(f'{cwd}/image/{imageName}')
 
-    return pil_to_base64(Base,format='png')
+    return imageName
+    # return pil_to_base64(Base,format='png')
+    # return pil_to_discord(Base)
 
 
-# 画像化
+# PILをbase64形式に変換
 def pil_to_base64(img, format="jpeg"):
     buffer = BytesIO()
     img.save(buffer, format)
     img_str = base64.b64encode(buffer.getvalue()).decode("ascii")
 
     return img_str
+
+
+# PILをdiscord送信用に変換
+def pil_to_discord(img):
+    fileio = BytesIO()
+    img.save(fileio, format="png")
+    fileio.seek(0)
+
+    return fileio
+
+
+# 画像ファイル名用のランダム文字列生成
+def randomname(n):
+    randlst = [random.choice(string.ascii_letters + string.digits) for i in range(n)]
+    return ''.join(randlst)

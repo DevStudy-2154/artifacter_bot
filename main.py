@@ -1,5 +1,6 @@
 import config
-import discord
+import os
+import discord, asyncio
 from discord.ui import Select, View
 from generateCharacterImage import generater
 from lib import common
@@ -18,18 +19,6 @@ class CharactersListView(View):
         super().__init__()
         self.add_item(CharactersListSelect(characters, uid))
 
-        # options = []
-        # for character in characters:
-        #     options.append(discord.SelectOption(label=character['name'], value=character['id']))
-
-    # # 選択された後の処理
-    # @discord.ui.select(placeholder="表示させたいキャラを選んでください", min_values=1, max_values=1, options=options)
-    # async def callback(self, select, interaction: discord.Interaction):
-    #     select.disabled = True
-    #     await interaction.response.edit_message(view=self)
-    #     await interaction.response.send_message(f'{interaction.user.name}は{select.values[0]}を選択しました', ephemeral=True)
-    #     # generater.generation(common.read_json('data.json'))
-
 
 # セレクトボックスの処理
 class CharactersListSelect(Select):
@@ -44,10 +33,17 @@ class CharactersListSelect(Select):
 
     async def callback(self, interaction: discord.Interaction):
         # self.disabled = True
-        # await interaction.response.edit_message(view=interaction)
-        # await interaction.response.send_message(f'{interaction.user.name}は{self.values[0]}を選択しました', ephemeral=True)
         data = enka.getCharacterData(self.values[0], self.uid)
-        generater.generation(data)
+        image = generater.generation(data)
+        await interaction.response.defer(ephemeral = True)
+
+
+        cwd = os.path.dirname(os.path.abspath(__file__))
+        path = f'{cwd}/generateCharacterImage/image/{image}'
+        await interaction.followup.send(file=discord.File(path))
+
+        # 画像削除
+        os.remove(path)
 
 
 # スラッシュコマンド作成
