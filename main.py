@@ -31,11 +31,10 @@ class CharactersListSelect(Select):
         for character in characters:
             options.append(discord.SelectOption(label=character['name'], value=character['id']))
 
-        super().__init__(placeholder="表示させたいキャラを選んでください", min_values=1, max_values=1, options=options)
+        super().__init__(min_values=1, max_values=1, options=options)
 
     # 選択後の処理
     async def callback(self, interaction: discord.Interaction):
-        # self.disabled = True
         data = enka.get_character_data(self.values[0], self.uid)
         image = generater.generation(data)
         path = f'{cwd}/generateCharacterImage/image/{image}'
@@ -52,7 +51,7 @@ class CharactersListSelect(Select):
 @tree.command(name="build", description="キャラ画像生成")
 async def build_command(interaction: discord.Interaction, uid:int):
     characters = enka.get_my_characters(uid)
-    await interaction.response.send_message("表示させたいキャラを選んでください", view=CharactersListView(characters, uid), ephemeral=True)
+    await interaction.response.send_message("表示させたいキャラを選んでください。", view=CharactersListView(characters, uid), ephemeral=True, delete_after=10)
 
 
 # 起動時のイベント

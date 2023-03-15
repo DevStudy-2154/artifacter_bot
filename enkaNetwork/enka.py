@@ -1,4 +1,4 @@
-import requests, json
+import requests
 import os
 from lib import common
 
