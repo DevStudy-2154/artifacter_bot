@@ -25,7 +25,10 @@ def get_api(uid):
     response = requests.get(f"https://enka.network/u/{uid}/__data.json")
     data = response.json()
 
-    return data
+    if data['nodes'][1]['type'] == 'error':  # UIDがない時
+        return {'type': 'error', 'data': '一致するUIDが見つかりません。\n再度試してください。'}
+    else:
+        return {'type': 'data', 'data': data}
 
 
 # キャラ名（日本語）の取得
@@ -211,7 +214,12 @@ def create_character_data(data, id):
 # キャラ名を整形して返す
 def get_my_characters(uid):
     data = get_api(uid)
-    characters = tlanslated_to_jp(data)
+
+    # UIDが存在しない場合、エラーメッセージを返す
+    if data['type'] == 'error':
+        return data['data']
+
+    characters = tlanslated_to_jp(data['data'])
 
     return characters
 
@@ -219,6 +227,6 @@ def get_my_characters(uid):
 # キャラクターデータをjson形式にして返す
 def get_character_data(id, uid):
     data = get_api(uid)
-    json_data = create_character_data(data, id)
+    json_data = create_character_data(data['data'], id)
 
     return json_data

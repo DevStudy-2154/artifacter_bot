@@ -51,7 +51,11 @@ class CharactersListSelect(Select):
 @tree.command(name="build", description="キャラ画像生成")
 async def build_command(interaction: discord.Interaction, uid:int):
     characters = enka.get_my_characters(uid)
-    await interaction.response.send_message("表示させたいキャラを選んでください。", view=CharactersListView(characters, uid), ephemeral=True, delete_after=10)
+
+    if type(characters) is str:
+        await interaction.response.send_message(characters, ephemeral=True)
+    else:
+        await interaction.response.send_message("表示させたいキャラを選んでください。", view=CharactersListView(characters, uid), ephemeral=True)
 
 
 # 起動時のイベント
